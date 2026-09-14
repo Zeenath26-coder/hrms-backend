@@ -19,4 +19,7 @@ public class TaskRequestDTO {
 
     @NotNull(message = "Enter the valid projectId")
     private Long projectId;
+    private Long employeeId;
+    private LocalDate assignedDate;
+    private LocalDate dueDate;
 }

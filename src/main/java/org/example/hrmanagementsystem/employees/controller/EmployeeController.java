@@ -46,6 +46,12 @@ public class EmployeeController {
         return ResponseEntity.ok(new ApiResponse<>("Employees retrieved successfully" ,employeeService.getAllemployees()));
     }
 
+    @GetMapping("/active")
+    @PreAuthorize("hasAnyAuthority('ADMIN' , 'MANAGER')")
+    public ResponseEntity<ApiResponse<List<EmployeeResponseDTO>>> getActiveEmployees(){
+        return ResponseEntity.ok(new ApiResponse<>("Active employees retrieved successfully", employeeService.getActiveEmployees()));
+    }
+
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyAuthority('ADMIN' , 'HR')")
     public ResponseEntity<ApiResponse<EmployeeResponseDTO>> postEmployee(@PathVariable Long id, @RequestBody EmployeeRequestDTO dto){
@@ -76,6 +82,14 @@ public class EmployeeController {
     }
 
 
+    @GetMapping("/without-account")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<ApiResponse<List<EmployeeResponseDTO>>> getEmployeesWithoutAccount() {
+        return ResponseEntity.ok(new ApiResponse<>(
+                "Employees without account retrieved successfully",
+                employeeService.getEmployeesWithoutAccount()
+        ));
+    }
 
 
 

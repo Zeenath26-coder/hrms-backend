@@ -1,5 +1,8 @@
 package org.example.hrmanagementsystem.security.model;
 
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import lombok.RequiredArgsConstructor;
 import org.example.hrmanagementsystem.auth.entity.User;
 import org.springframework.security.core.GrantedAuthority;
@@ -25,8 +28,15 @@ public class MyUserDetails implements UserDetails {
     @Override
     public boolean isEnabled(){return user.isActive();}
 
+    public Long getUserId() {
+        return user.getUserId();
+    }
+
     public Long getEmployeeId(){return user.getEmployee() != null ? user.getEmployee().getEmployeeId() : null;}
 
     public String getRole(){return user.getRole().name();}
+
+    public User getUser() {return  user; }
+
 }
 

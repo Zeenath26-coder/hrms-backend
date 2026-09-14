@@ -45,9 +45,9 @@ public class AdminUserController {
 
     @PatchMapping("/{id}/reset-password")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<ApiResponse<Void>> resetPassword(@PathVariable Long id , @RequestBody  ResetPasswordRequest request){
-        adminUserService.resetPassword(id , request);
-        return ResponseEntity.ok(new ApiResponse<>("Password reset successfully" , null));
+    public ResponseEntity<ApiResponse<String>> resetPassword(@PathVariable Long id ){
+        String resetLink = adminUserService.createPasswordResetRequest(id);
+        return ResponseEntity.ok(new ApiResponse<>("Password reset link generated successfully" , resetLink));
     }
 
     @PatchMapping("/{id}/deactivate")
@@ -78,5 +78,6 @@ public class AdminUserController {
                                                            @ParameterObject @PageableDefault(page = 0 , size = 10 , sort = "username" , direction = Sort.Direction.ASC)Pageable pageable){
         return ResponseEntity.ok(new ApiResponse<>("Users retrieved successfully" ,adminUserService.searchUser(username , active , pageable)));
     }
+
 
 }

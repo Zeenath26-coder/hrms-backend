@@ -19,7 +19,7 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        if (userRepository.count() == 0 ) { //it ensures the admin creation logic runs only once on startup
+        if (userRepository.count() == 0 ) {
             User admin = User.builder()
                     .username("sadmin")
                     .password(passwordEncoder.encode("sadmin123"))

@@ -20,6 +20,9 @@ public class EmployeeResponseDTO {
     private String phonenumber;
     private BigDecimal salary;
     private Long deptId;
+    private  String departmentName;
     private Long jobId;
+    private String jobTitle;
+
 }
 

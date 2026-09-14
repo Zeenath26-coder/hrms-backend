@@ -1,5 +1,6 @@
 package org.example.hrmanagementsystem.employees.service;
 
+import org.example.hrmanagementsystem.auth.repository.UserRepository;
 import org.example.hrmanagementsystem.employees.specification.EmployeeSpecification;
 import org.example.hrmanagementsystem.enums.StatusType;
 import org.example.hrmanagementsystem.exception.BusinessException;
@@ -13,11 +14,13 @@ import org.example.hrmanagementsystem.employees.dto.EmployeeResponseDTO;
 import org.example.hrmanagementsystem.employees.model.Employee;
 import org.example.hrmanagementsystem.job.model.Job;
 import org.example.hrmanagementsystem.job.repository.JobRepository;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
+import javax.swing.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -27,6 +30,7 @@ public class EmployeeService {
     private final EmployeeRepository employeeRepository;
     private final DepartmentRepository departmentRepository;
     private  final JobRepository jobRepository;
+    private final UserRepository userRepository;
 
     private Employee toEntity(EmployeeRequestDTO dto){
         Employee employee = new Employee();
@@ -82,7 +86,9 @@ public class EmployeeService {
                 .phonenumber(employee.getPhoneNumber())
                 .salary(employee.getSalary())
                 .deptId(employee.getDepartment().getDeptId())
+                .departmentName(employee.getDepartment().getDeptName())
                 .jobId(employee.getJob().getId())
+                .jobTitle(employee.getJob().getJobTitle())
                 .build();
     }
 
@@ -108,6 +114,22 @@ public class EmployeeService {
                .collect(Collectors.toList());
 
     }
+
+    public List<EmployeeResponseDTO> getActiveEmployees() {
+        return employeeRepository.findByStatus(StatusType.ACTIVE)
+                .stream()
+                .map(this::toDto)
+                .collect(Collectors.toList());
+    }
+
+    public List<EmployeeResponseDTO> getEmployeesWithoutAccount() {
+        return employeeRepository.findAll()
+                .stream()
+                .filter(employee -> !userRepository.existsByEmployee_EmployeeId(employee.getEmployeeId()))
+                .map(this::toDto)
+                .collect(Collectors.toList());
+    }
+
     public EmployeeResponseDTO updateEmployees(Long id , EmployeeRequestDTO dto){
         Employee employee = findEmployeeById(id);
         employee.setFirstName(dto.getFirstName());
@@ -171,7 +193,11 @@ public class EmployeeService {
     }
     public void deleteEmployee(Long id){
         Employee employee = findEmployeeById(id);
-        employeeRepository.delete(employee);
+        try {
+            employeeRepository.delete(employee);
+        }catch ( DataIntegrityViolationException e){
+            throw new BusinessException("Employee is assigned as a department manager. Reassign before deleting.");
+        }
     }
 
     public Page<EmployeeResponseDTO> searchEmployees(String ename , StatusType statusType , Long departmentId , Long jobId , Pageable pageable){

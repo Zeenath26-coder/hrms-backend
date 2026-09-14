@@ -3,11 +3,11 @@ package org.example.hrmanagementsystem.project.controller;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.example.hrmanagementsystem.ApiResponse;
+import org.example.hrmanagementsystem.auth.repository.UserRepository;
 import org.example.hrmanagementsystem.employees.Repository.EmployeeRepository;
 import org.example.hrmanagementsystem.employees.service.EmployeeService;
-import org.example.hrmanagementsystem.project.dto.ProjectCreateDTO;
-import org.example.hrmanagementsystem.project.dto.ProjectResponseDTO;
-import org.example.hrmanagementsystem.project.dto.ProjectUpdateDTO;
+import org.example.hrmanagementsystem.enums.RoleType;
+import org.example.hrmanagementsystem.project.dto.*;
 import org.example.hrmanagementsystem.project.service.ProjectService;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
@@ -19,6 +19,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+
 import java.util.List;
 
 @RestController
@@ -26,7 +27,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ProjectController {
     private final ProjectService projectService;
-
+    private final UserRepository userRepository;
 
     @PostMapping
     @PreAuthorize("hasAnyAuthority('ADMIN' , 'MANAGER')")
@@ -36,12 +37,12 @@ public class ProjectController {
                         projectService.save(dto)));
     }
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('ADMIN' , 'MANAGER')")
+    @PreAuthorize("hasAnyAuthority('ADMIN' , 'MANAGER' , 'EMPLOYEE')")
     public ResponseEntity<ApiResponse<List<ProjectResponseDTO>>> getAllproject(){
         return ResponseEntity.ok(new ApiResponse<>("Projects retrieved successfully" ,projectService.getAllproject()));}
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('ADMIN' , 'MANAGER')")
+    @PreAuthorize("hasAnyAuthority('ADMIN' , 'MANAGER','EMPLOYEE')")
     public ResponseEntity<ApiResponse<ProjectResponseDTO>>  getProjectById(@PathVariable Long id){
         return ResponseEntity.ok(new ApiResponse<>("Project retrieved successfully" ,projectService.getprojectById(id)));
     }
@@ -50,6 +51,12 @@ public class ProjectController {
     @PreAuthorize("hasAnyAuthority('ADMIN' , 'MANAGER')")
     public ResponseEntity<ApiResponse<ProjectResponseDTO>> updateProject (@PathVariable Long id , @RequestBody ProjectUpdateDTO dto){
         return ResponseEntity.ok(new ApiResponse<>("Project updated successfully" ,projectService.updateProject(id , dto)));
+    }
+
+    @PatchMapping("/{id}/status")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'MANAGER') ")
+    public ResponseEntity<ApiResponse<ProjectResponseDTO>> updateProjectStatus(@PathVariable Long id, @RequestBody @Valid UpdateProjectStatusDTO dto){
+        return ResponseEntity.ok(new ApiResponse<>("Project status updated successfully",projectService.updateProjectStatus(id, dto)));
     }
 
 
@@ -74,11 +81,48 @@ public class ProjectController {
     }
 
     @GetMapping("/search")
-    @PreAuthorize("hasAnyAuthority('ADMIN' , 'MANAGER')")
+    @PreAuthorize("hasAnyAuthority('ADMIN' , 'MANAGER','EMPLOYEE')")
     public ResponseEntity<ApiResponse<Page<ProjectResponseDTO>>> getProjects (@RequestParam(required = false) String pname ,
                                                                  @RequestParam(required = false) Long managerId ,
                                                                  @ParameterObject @PageableDefault(page = 0 , size = 5 , sort = "projectName" , direction = Sort.Direction.ASC)Pageable pageable){
         return ResponseEntity.ok(new ApiResponse<>("Projects retrieved successfully",projectService.searchProjects(pname , managerId ,pageable)));
     }
+    @GetMapping("/managers")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'MANAGER','EMPLOYEE')")
+    public ResponseEntity<ApiResponse<List<ManagerResponseDTO>>> getManagers() {
 
+        List<ManagerResponseDTO> managers =
+                userRepository.findByRole(RoleType.MANAGER)
+                        .stream()
+                        .map(user -> new ManagerResponseDTO(
+                                user.getUserId(),
+                                user.getUsername()
+                        ))
+                        .toList();
+
+        return ResponseEntity.ok(
+                new ApiResponse<>(
+                        "Managers retrieved successfully",
+                        managers
+                )
+        );
+    }
+
+    @DeleteMapping("/{projectId}/remove-employee/{employeeId}")
+    @PreAuthorize("hasAnyAuthority('ADMIN','MANAGER')")
+    public  ResponseEntity<ApiResponse<Void>> removeEmployee(
+            @PathVariable Long projectId , @PathVariable Long employeeId
+    ){
+        projectService.removeEmployeeFromProject(projectId , employeeId);
+        return ResponseEntity.ok(new ApiResponse<>("Employee removed successfully", null));
+    }
+
+    @GetMapping("/{projectId}/employees")
+    @PreAuthorize("hasAnyAuthority('ADMIN' , 'MANAGER','EMPLOYEE')")
+    public ResponseEntity<ApiResponse<List<ProjectEmployeeResponseDTO>>> getProjectEmployees (@PathVariable Long projectId){
+        return ResponseEntity.ok(new ApiResponse<>(
+                "Project employees retrieved successfully",
+                projectService.getProjectEmployees(projectId)
+        ));
+    }
 }

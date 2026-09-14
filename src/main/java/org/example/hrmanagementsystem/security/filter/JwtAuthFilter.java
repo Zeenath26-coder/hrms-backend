@@ -2,6 +2,7 @@ package org.example.hrmanagementsystem.security.filter;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +28,7 @@ public class JwtAuthFilter extends OncePerRequestFilter  {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request){
         String path = request.getServletPath();
-        return path.equals("/auth/login");
+        return path.equals("/api/v1/auth/login");
 
 
     }
@@ -36,17 +37,26 @@ public class JwtAuthFilter extends OncePerRequestFilter  {
                                      HttpServletResponse response,
                                      FilterChain filterChain)
         throws ServletException, IOException {
-        String authHeader = request.getHeader("Authorization");
-        if(authHeader == null || !authHeader.startsWith("Bearer ")){
+        Cookie[] cookies = request.getCookies();
+        String token = null;
+        if(cookies != null) {
+            for (Cookie cookie: cookies) {
+                if ("accessToken".equals(cookie.getName())) {
+                    token = cookie.getValue();
+                    break;
+                }
+            }
+        }
+        if(token == null){
             filterChain.doFilter(request, response);
             return;
         }
 
-        String token = authHeader.substring(7);
 
         if(!jwtService.isTokenValid(token)){
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.getWriter().write("Invalid or expired token");
+            response.setContentType("application/json");
+            response.getWriter().write( "{\"message\":\"Invalid or expired token\",\"data\":null}");
             return;
         }
 
@@ -54,6 +64,14 @@ public class JwtAuthFilter extends OncePerRequestFilter  {
         if (username != null &&
                 SecurityContextHolder.getContext().getAuthentication() == null) {
             MyUserDetails userDetails = (MyUserDetails) userDetailsService.loadUserByUsername(username);
+
+            if (!userDetails.isEnabled()) {
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.setContentType("application/json");
+                response.getWriter().write(
+                        "{\"message\":\"Account is deactivated\",\"data\":null}");
+                return;
+            }
 
             UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                     userDetails,

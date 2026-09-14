@@ -7,6 +7,5 @@ import java.util.List;
 @Data
 public class ProjectCreateDTO {
     private String projectName;
-
-
+    private List <Long> employeeIds;
 }

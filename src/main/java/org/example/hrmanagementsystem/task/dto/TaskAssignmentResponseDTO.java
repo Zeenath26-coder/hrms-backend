@@ -19,7 +19,8 @@ public class TaskAssignmentResponseDTO {
 
     private Long projectId ;
     private String projectName;
-
+    private String assignedBy;
+    private Long assignedById;
     private LocalDate assignedDate;
     private LocalDate dueDate;
 

@@ -34,6 +34,9 @@ public class User {
     @Column(nullable = false)
     private boolean active = true;
 
+    @Column(nullable = false)
+    private boolean mustChangePassword = false;
+
     @OneToOne
     @JoinColumn(name = "employeeId" , nullable = true, unique = true)
     private Employee employee;

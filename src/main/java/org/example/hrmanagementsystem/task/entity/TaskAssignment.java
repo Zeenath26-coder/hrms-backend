@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.example.hrmanagementsystem.auth.entity.User;
 import org.example.hrmanagementsystem.employees.model.Employee;
 import org.example.hrmanagementsystem.enums.TaskStatus;
 
@@ -37,4 +38,8 @@ public class TaskAssignment {
 
     @Column(nullable = false)
     private LocalDate dueDate;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "assigned_by", nullable = false)
+    private User assignedBy;
 }

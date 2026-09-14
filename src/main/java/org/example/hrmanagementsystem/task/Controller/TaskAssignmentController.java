@@ -30,15 +30,42 @@ public class TaskAssignmentController {
 
     @PostMapping("/assign")
     @PreAuthorize("hasAnyAuthority('ADMIN','MANAGER')")
-    public ResponseEntity<ApiResponse<TaskAssignmentResponseDTO>> assignTask(@RequestBody @Valid TaskAssignmentRequestDTO dto){
+    public ResponseEntity<ApiResponse<TaskAssignmentResponseDTO>> assignTask(@RequestBody @Valid TaskAssignmentRequestDTO dto,  @AuthenticationPrincipal MyUserDetails userDetails){
         return ResponseEntity.ok(
-                new ApiResponse<>("Task assigned successfully " , taskAssignmentService.assignTask(dto)));
+                new ApiResponse<>("Task assigned successfully " , taskAssignmentService.assignTask(dto,  userDetails)));
     }
 
     @GetMapping
     @PreAuthorize("hasAnyAuthority('ADMIN','MANAGER')")
     public ResponseEntity<ApiResponse<List<TaskAssignmentResponseDTO>>> getAllTasks(){
         return ResponseEntity.ok(new ApiResponse<>("Tasks retrieved successfully" ,taskAssignmentService.getAllTasks()));
+    }
+
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ADMIN','MANAGER')")
+    public ResponseEntity<ApiResponse<TaskAssignmentResponseDTO>> getTaskAssignmentById(
+            @PathVariable Long id
+    ) {
+        return ResponseEntity.ok(
+                new ApiResponse<>(
+                        "Task assignment retrieved successfully",
+                        taskAssignmentService.getTaskAssignmentById(id)
+                )
+        );
+    }
+
+    @PutMapping("/{assignmetId}")
+    @PreAuthorize("hasAnyAuthority('ADMIN','MANAGER')")
+    public ResponseEntity<ApiResponse<TaskAssignmentResponseDTO>> updateTaskAssignment(@PathVariable Long assignmetId ,@RequestBody @Valid TaskAssignmentRequestDTO dto , @AuthenticationPrincipal MyUserDetails userDetails){
+        return ResponseEntity.ok(new ApiResponse<>("Task assignment updated successfully",
+                taskAssignmentService.updateTaskAssignment(assignmetId, dto , userDetails)));
+    }
+
+    @DeleteMapping("/{assignmentId}")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'MANAGER')")
+    public ResponseEntity<ApiResponse<Void>> deleteTaskAssignment(@PathVariable Long assignmentId, @AuthenticationPrincipal MyUserDetails userDetails){
+        taskAssignmentService.deleteTaskAssignment(assignmentId, userDetails);
+    return ResponseEntity.ok(new ApiResponse<>("Task assignment deleted successfully", null));
     }
 
     @GetMapping("/my-tasks")
@@ -49,8 +76,8 @@ public class TaskAssignmentController {
 
     @PatchMapping("/{assignmentId}/status")
     @PreAuthorize("hasAnyAuthority('ADMIN','MANAGER','EMPLOYEE')")
-    public ResponseEntity<ApiResponse<TaskAssignmentResponseDTO>> updateTaskStatus(@PathVariable Long assignmentId , @RequestBody @Valid UpdateTaskStatusDTO dto , @AuthenticationPrincipal MyUserDetails myUserDetails){
-        return ResponseEntity.ok(new ApiResponse<>("Task status updated successfully" ,taskAssignmentService.updateTaskStatus(assignmentId , dto , myUserDetails.getEmployeeId())));
+    public ResponseEntity<ApiResponse<TaskAssignmentResponseDTO>> updateTaskStatus(@PathVariable Long assignmentId , @RequestBody @Valid UpdateTaskStatusDTO dto , @AuthenticationPrincipal MyUserDetails userDetails){
+        return ResponseEntity.ok(new ApiResponse<>("Task status updated successfully" ,taskAssignmentService.updateTaskStatus(assignmentId , dto , userDetails)));
 
     }
     @GetMapping("/search")

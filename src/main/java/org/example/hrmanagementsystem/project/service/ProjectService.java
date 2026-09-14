@@ -4,15 +4,15 @@ import org.example.hrmanagementsystem.auth.entity.User;
 import org.example.hrmanagementsystem.auth.repository.UserRepository;
 import org.example.hrmanagementsystem.employees.Repository.EmployeeRepository;
 import org.example.hrmanagementsystem.employees.service.EmployeeService;
+import org.example.hrmanagementsystem.enums.ProjectStatus;
 import org.example.hrmanagementsystem.enums.RoleType;
+import org.example.hrmanagementsystem.enums.StatusType;
 import org.example.hrmanagementsystem.exception.BusinessException;
 import org.example.hrmanagementsystem.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.example.hrmanagementsystem.employees.model.Employee;
 import org.example.hrmanagementsystem.project.Repository.ProjectRepository;
-import org.example.hrmanagementsystem.project.dto.ProjectCreateDTO;
-import org.example.hrmanagementsystem.project.dto.ProjectResponseDTO;
-import org.example.hrmanagementsystem.project.dto.ProjectUpdateDTO;
+import org.example.hrmanagementsystem.project.dto.*;
 import org.example.hrmanagementsystem.project.model.Project;
 import org.example.hrmanagementsystem.project.specification.ProjectSpecification;
 import org.springframework.data.domain.Page;
@@ -36,99 +36,129 @@ public class ProjectService {
     private final EmployeeRepository employeeRepository;
 
 
-    private Project toEntity (ProjectCreateDTO dto, User manager){
+    private Project toEntity(ProjectCreateDTO dto, User manager) {
         Project project = new Project();
         project.setProjectName(dto.getProjectName());
         project.setManager(manager);
+
+        if (dto.getEmployeeIds() != null && !dto.getEmployeeIds().isEmpty()) {
+            List<Employee> employees = employeeRepository.findAllById(dto.getEmployeeIds());
+            if (employees.size() != dto.getEmployeeIds().size()) {
+                throw new ResourceNotFoundException("One or more employees were not founnd");}
+            boolean hasInactiveEmployee = employees.stream()
+                    .anyMatch(employee -> employee.getStatus() != StatusType.ACTIVE);
+            if (hasInactiveEmployee) {
+                throw new BusinessException("Only active employees can be assigned to projects.");}
+            project.setEmployees(employees);
+        }
         return project;
     }
 
-//
+
     private ProjectResponseDTO toDTO(Project project) {
-        List<String> names = project.getEmployees().stream()
+
+        List<Long> employeeIds = project.getEmployees().stream()
+                .map(emp -> emp.getEmployeeId())
+                .collect(Collectors.toList());
+        List<String> employeeNames = project.getEmployees().stream()
                 .map(emp -> emp.getFirstName() + " " + emp.getLastName())
                 .collect(Collectors.toList());
-
         return ProjectResponseDTO.builder()
                 .projectId(project.getProjectId())
                 .projectName(project.getProjectName())
-                .managerId(project.getManager() != null ? project.getManager().getUserId() : null)
-                .managerName(project.getManager() != null ? project.getManager().getUsername() : null)
-                .employeeNames(names)
+                .managerId(
+                        project.getManager() != null ? project.getManager().getUserId() : null)
+                .managerName(
+                        project.getManager() != null ? project.getManager().getUsername() : null)
+                .employeeIds(employeeIds)
+                .employeeNames(employeeNames)
+                .status(project.getStatus())
                 .build();
     }
 
 
+    public ProjectResponseDTO save(ProjectCreateDTO dto) {
+        String username = SecurityContextHolder.getContext()
+                .getAuthentication().getName();
+        User manager = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        public ProjectResponseDTO save(ProjectCreateDTO dto) {
+        if (!manager.getRole().equals(RoleType.MANAGER) && !manager.getRole().equals(RoleType.ADMIN)) {
+            throw new BusinessException("Only Admins and Managers can create projects");
+        }
+        Project project = toEntity(dto, manager);
+        Project savedProject = projectRepository.save(project);
+        return toDTO(savedProject);
+    }
 
-            String username = SecurityContextHolder.getContext()
-                    .getAuthentication().getName();
-            User manager = userRepository.findByUsername(username)
-                    .orElseThrow(()-> new ResourceNotFoundException("User not found"));
+
+    public List<ProjectResponseDTO> getAllproject() {
+        return projectRepository.findAll()
+                .stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    public ProjectResponseDTO getprojectById(Long id) {
+        Project project = projectRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Project not found with id: " + id
+                ));
+        return toDTO(project);
+    }
 
 
-            if(!manager.getRole().equals(RoleType.MANAGER)){
-                throw new BusinessException("Only Managers can create projects");
-            }
-            Project project = toEntity(dto , manager);
+    public Project findProjectById(Long id) {
+        return projectRepository.findById(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Project not found."));
+    }
 
-            Project savedProject = projectRepository.save(project);
-            return toDTO(savedProject);
+    public ProjectResponseDTO updateProject(Long id, ProjectUpdateDTO dto) {
+        Project project = findProjectById(id);
+
+        if (dto.getProjectName() != null) {
+            validateProjectIsActive(project);
+            project.setProjectName(dto.getProjectName());
         }
 
+        if (dto.getEmployeeIds() != null) {
+            validateProjectIsActive(project);
 
+            if (!dto.getEmployeeIds().isEmpty()) {
 
-
-        public List<ProjectResponseDTO> getAllproject(){
-            return projectRepository.findAll()
-                    .stream()
-                    .map(this::toDTO)
-                    .collect(Collectors.toList());
-        }
-
-        public ProjectResponseDTO getprojectById(Long id){
-             Project project = projectRepository.findById(id)
-                     .orElseThrow(()-> new ResourceNotFoundException(
-                             "Project not found with id: " + id
-                     ));
-             return toDTO(project);
-        }
-
-
-
-        public Project findProjectById(Long id){
-            return projectRepository.findById(id)
-                    .orElseThrow(()->
-                            new ResourceNotFoundException("Project not found."));
-        }
-
-        public ProjectResponseDTO updateProject(Long id , ProjectUpdateDTO dto){
-            Project project = findProjectById(id);
-
-            if(dto.getProjectName() != null){
-                project.setProjectName(dto.getProjectName());
-            }
-            if(dto.getEmployeeIds() != null && !dto.getEmployeeIds().isEmpty() ) {
-                List<Employee> employeesToAdd = new ArrayList<>();
-
-                for (Long employeeId : dto.getEmployeeIds()) {
-                    Employee employee = employeeRepository.findById(employeeId)
-                            .orElseThrow(() -> new ResourceNotFoundException(
-                                    "Employee not found with id: " + employeeId
-                            ));
-                    if (project.getEmployees().contains(employee)) {
-                        throw new BusinessException(
-                                "Employee " + employeeId + " already assigned to this project"
-                        );
-                    }
-                    employeesToAdd.add(employee);
+                List<Employee> employees = employeeRepository.findAllById(dto.getEmployeeIds());
+                if (employees.size() != dto.getEmployeeIds().size()) {
+                    throw new ResourceNotFoundException("One or more employees were not found");
                 }
-                project.getEmployees().addAll(employeesToAdd);
+                boolean hasInactiveEmployee = employees.stream()
+                        .anyMatch(employee -> employee.getStatus() != StatusType.ACTIVE);
+                if (hasInactiveEmployee) {
+                    throw new BusinessException(
+                            "Only active employees can be assigned to projects."
+                    );
+                }
+                for (Employee employee : employees) {
+                    if (!project.getEmployees().contains(employee)) {
+                        project.getEmployees().add(employee);
+                    }
+                }
             }
-
+        }
+        if(dto.getStatus() != null){
+            validateStatusChange(project.getStatus(), dto.getStatus());
+            project.setStatus(dto.getStatus());
+        }
             Project updatedProject = projectRepository.save(project);
             return toDTO(updatedProject);
+        }
+
+        public ProjectResponseDTO updateProjectStatus(Long id , UpdateProjectStatusDTO dto){
+        Project project = findProjectById(id);
+        validateStatusChange(project.getStatus(), dto.getStatus());
+        project.setStatus(dto.getStatus());
+        Project updated = projectRepository.save(project);
+        return toDTO(updated);
         }
 
 
@@ -152,12 +182,19 @@ public class ProjectService {
 
         public ProjectResponseDTO assignEmployeeToProject (Long projectId , Long employeeId){
             Project project = findProjectById(projectId);
-            Employee employee = employeeService.findEmployeeById(employeeId);
-
-            if(project.getEmployees().contains(employee)){
-                throw new BusinessException("Employee already assigned to this project");
+            validateProjectIsActive(project);
+            Employee employee = employeeRepository.findById(employeeId)
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Employee not found with id: " + employeeId)
+                    );
+            if (employee.getStatus() != StatusType.ACTIVE) {
+                throw new BusinessException(
+                        "Employee is already assigned to this project"
+                );
             }
-
+            if(project.getEmployees().contains(employee)){
+                throw new BusinessException("Employee is already assigned to this project");
+            }
             project.getEmployees().add(employee);
             Project saved = projectRepository.save(project);
 
@@ -173,6 +210,50 @@ public class ProjectService {
             Page <Project> projectPage = projectRepository.findAll(spec , pageable);
             return projectPage.map(this::toDTO);
         }
+
+        public void removeEmployeeFromProject(Long projectId, Long employeeId){
+        Project project = findProjectById(projectId);
+        validateProjectIsActive(project);
+        Employee employee = employeeRepository.findById(employeeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: " + employeeId));
+
+        if(!project.getEmployees().contains(employee)) {
+            throw new BusinessException("Employee is not assigned to this project");
+        }
+        project.getEmployees().remove(employee);
+        projectRepository.save(project);
+        }
+
+        public List <ProjectEmployeeResponseDTO> getProjectEmployees (Long projectId) {
+        Project project = findProjectById(projectId);
+        return project.getEmployees()
+                .stream()
+                .map(employee -> new ProjectEmployeeResponseDTO(
+                        employee.getEmployeeId(),
+                        employee.getFirstName(),
+                        employee.getLastName()
+                ))
+                .toList();
+        }
+
+        private void validateProjectIsActive (Project project){
+        if(project.getStatus() != ProjectStatus.ACTIVE){
+            throw new BusinessException("Only active projects can be modified.");
+        }
+        }
+
+    private void validateStatusChange(ProjectStatus currentStatus, ProjectStatus newStatus){
+        if(currentStatus == newStatus){
+            return;
+        }
+        if(newStatus == ProjectStatus.ACTIVE) {
+            return;
+        }
+        if(currentStatus != ProjectStatus.ACTIVE) {
+            throw new BusinessException("Only active projects can be completed or cancelled.");
+        }
     }
+    }
+
 
 

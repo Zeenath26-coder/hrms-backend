@@ -5,8 +5,11 @@ import org.example.hrmanagementsystem.admin.dto.ResetPasswordRequest;
 import org.example.hrmanagementsystem.admin.dto.UpdateUserRequest;
 import org.example.hrmanagementsystem.admin.dto.UserResponseDTO;
 import org.example.hrmanagementsystem.admin.specification.UserSpecification;
+import org.example.hrmanagementsystem.auth.entity.PasswordResetToken;
 import org.example.hrmanagementsystem.auth.entity.User;
+import org.example.hrmanagementsystem.auth.repository.PasswordResetTokenRepository;
 import org.example.hrmanagementsystem.auth.repository.UserRepository;
+import org.example.hrmanagementsystem.auth.service.EmailService;
 import org.example.hrmanagementsystem.exception.BusinessException;
 import org.example.hrmanagementsystem.exception.ResourceNotFoundException;
 import org.springframework.data.domain.Page;
@@ -18,7 +21,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.awt.print.PageFormat;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -26,13 +31,21 @@ import java.util.List;
 public class AdminUserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final EmailService emailService;
 
     private UserResponseDTO toDTO(User user) {
+        String employeeName = null;
+        if (user.getEmployee() != null){
+            employeeName = user.getEmployee().getFirstName() + " " + user.getEmployee().getLastName();
+        }
         return UserResponseDTO.builder()
                 .userId(user.getUserId())
                 .username(user.getUsername())
                 .role(user.getRole().name())
                 .employeeId(user.getEmployee() != null ? user.getEmployee().getEmployeeId() : null)
+                .employeeName(employeeName)
+                .active(user.isActive())
                 .build();
     }
 
@@ -57,27 +70,42 @@ public class AdminUserService {
                 throw new BusinessException("Username already taken: " + userRequest.getUsername());
             }
             user.setUsername(userRequest.getUsername());
-
         }
-
         if(userRequest.getActive() != null) {
             user.setActive(userRequest.getActive());
         }
-
      if (userRequest.getRole() != null) {
          user.setRole(userRequest.getRole());
      }
      User savedUser = userRepository.save(user);
-
       return toDTO(savedUser);
 
 }
-    public void resetPassword(Long id , ResetPasswordRequest request){
-        User user = userRepository.findById(id)
-                .orElseThrow(()-> new ResourceNotFoundException("User not found"));
-        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
-        userRepository.save(user);
+
+
+    public String createPasswordResetRequest (Long userId){
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        if (!user.isActive()) {
+            throw new BusinessException("Cannot reset password for an inactive user");
+        }
+        String token = UUID.randomUUID().toString();
+        PasswordResetToken resetToken = new PasswordResetToken();
+        resetToken.setToken(token);
+        resetToken.setUser(user);
+        resetToken.setExpiresAt(LocalDateTime.now().plusMinutes(30));
+        resetToken.setUsed(false);
+        passwordResetTokenRepository.save(resetToken);
+        String resetLink = "http://localhost:5173/reset-password?token=" + token;
+
+        if(user.getEmployee() != null &&
+        user.getEmployee().getEmail() != null &&
+        !user.getEmployee().getEmail().isBlank()){
+            emailService.sendPasswordResetEmail(user.getEmployee().getEmail() , resetLink);
+        }
+        return resetLink;
     }
+
     public void deactivateUser(Long id){
         User user = userRepository.findById(id)
                 .orElseThrow(()-> new ResourceNotFoundException("User not found"));

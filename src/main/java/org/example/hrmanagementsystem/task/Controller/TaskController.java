@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 
 import org.example.hrmanagementsystem.ApiResponse;
 import org.example.hrmanagementsystem.auth.repository.UserRepository;
+import org.example.hrmanagementsystem.security.model.MyUserDetails;
 import org.example.hrmanagementsystem.task.Repository.TaskRepository;
 import org.example.hrmanagementsystem.task.dto.TaskRequestDTO;
 import org.example.hrmanagementsystem.task.dto.TaskResponseDTO;
@@ -16,6 +17,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -30,8 +32,8 @@ public class TaskController {
 
     @PostMapping
     @PreAuthorize("hasAnyAuthority('ADMIN','MANAGER')")
-    public ResponseEntity<ApiResponse<TaskResponseDTO>> saveTask (@RequestBody TaskRequestDTO dto){
-        return ResponseEntity.ok(new ApiResponse<>("Task inserted successfully" ,taskService.save(dto)));}
+    public ResponseEntity<ApiResponse<TaskResponseDTO>> saveTask (@RequestBody TaskRequestDTO dto , @AuthenticationPrincipal MyUserDetails userDetails){
+        return ResponseEntity.ok(new ApiResponse<>("Task inserted successfully" ,taskService.save(dto, userDetails)));}
 
     @GetMapping
     @PreAuthorize("hasAnyAuthority('ADMIN','MANAGER')")

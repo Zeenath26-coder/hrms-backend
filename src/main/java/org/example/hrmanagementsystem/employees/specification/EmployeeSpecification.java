@@ -14,7 +14,9 @@ public class EmployeeSpecification {
             } else {
                 String keyword = "%" + searchKeyword.trim().toLowerCase() + "%";
                 return cb.or(cb.like(cb.lower(root.get("firstName")), keyword),
-                        cb.like(cb.lower(root.get("lastName")), keyword));
+                        cb.like(cb.lower(root.get("lastName")), keyword),
+                        cb.like(cb.lower(root.get("email")), keyword));
+
             }
         };
     }

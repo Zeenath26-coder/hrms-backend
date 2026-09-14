@@ -1,6 +1,7 @@
 package org.example.hrmanagementsystem.project.dto;
 
 import lombok.Data;
+import org.example.hrmanagementsystem.enums.ProjectStatus;
 
 import java.util.List;
 
@@ -8,4 +9,5 @@ import java.util.List;
 public class ProjectUpdateDTO {
     private String projectName;
     private List<Long> employeeIds;
+    private ProjectStatus status;
 }

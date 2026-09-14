@@ -4,9 +4,11 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.example.hrmanagementsystem.auth.entity.User;
 import org.example.hrmanagementsystem.employees.model.Employee;
+import org.example.hrmanagementsystem.enums.ProjectStatus;
 import org.example.hrmanagementsystem.task.entity.Task;
 import org.hibernate.annotations.SQLRestriction;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -20,7 +22,7 @@ import java.util.List;
 @SQLRestriction("deleted = false")
 public class Project {
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long projectId;
 
     @Column(nullable = false)
@@ -28,6 +30,13 @@ public class Project {
 
     @Column(nullable = false)
     private boolean deleted = false;
+
+    @Column(nullable = false)
+    private LocalDate createdDate;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private ProjectStatus status = ProjectStatus.ACTIVE;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "managerId" , nullable = false)
@@ -45,6 +54,4 @@ public class Project {
 
     @OneToMany(mappedBy = "project", fetch = FetchType.LAZY)
     private List<Task> tasks  = new ArrayList<>();
-
-
 }

@@ -1,6 +1,8 @@
 package org.example.hrmanagementsystem.department.service;
 
-
+import org.example.hrmanagementsystem.employees.model.Employee;
+import org.example.hrmanagementsystem.enums.StatusType;
+import org.example.hrmanagementsystem.exception.BusinessException;
 import org.example.hrmanagementsystem.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.example.hrmanagementsystem.department.dto.DepartmentRequestDTO;
@@ -29,10 +31,7 @@ public class DepartmentService {
         Department dept = new Department();
         dept.setDeptName(dto.getDeptName());
         if(dto.getManagerId() != null) {
-            dept.setManager(employeeRepository.findById(dto.getManagerId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Employee not found"))
-            );
-
+            dept.setManager(validateManager(dto.getManagerId()));
         }
 
         return dept;
@@ -43,13 +42,14 @@ public class DepartmentService {
                 .deptId(dept.getDeptId())
                 .deptName(dept.getDeptName())
                 .managerId(dept.getManager() != null ?dept.getManager().getEmployeeId():null)
+                .managerName(dept.getManager() != null ?dept.getManager().getFirstName()+ " " + dept.getManager().getLastName(): null)
                 .build();
     }
 
     public DepartmentResponseDTO saveDepartment(DepartmentRequestDTO dto){
         Department dept = toEntity(dto);
-       Department savedDept = departmentRepository.save(dept);
-       return toDto(savedDept);
+        Department savedDept = departmentRepository.save(dept);
+        return toDto(savedDept);
     }
 
 
@@ -73,10 +73,7 @@ public class DepartmentService {
         Department dept = findDepartmentById(id);
         dept.setDeptName(dto.getDeptName());
         if(dto.getManagerId() != null){
-            dept.setManager(
-                    employeeRepository.findById(dto.getManagerId())
-                    .orElseThrow(()-> new ResourceNotFoundException("Employee not found")));
-
+            dept.setManager(validateManager(dto.getManagerId()));
         }
         Department updatedDept = departmentRepository.save(dept);
         return toDto(updatedDept);
@@ -87,8 +84,7 @@ public class DepartmentService {
                 .orElseThrow(()-> new ResourceNotFoundException("Department not found"));
         if(dto.getDeptName() != null) department.setDeptName(dto.getDeptName());
         if(dto.getManagerId() != null) {
-            department.setManager(employeeRepository.findById(dto.getManagerId())
-                    .orElseThrow(()-> new ResourceNotFoundException("ManagerId not found")));
+            department.setManager(validateManager(dto.getManagerId()));
         }
         return toDto(departmentRepository.save(department));
 
@@ -103,6 +99,15 @@ public class DepartmentService {
 
     public void deleteDept(Long id){
         Department dept = findDepartmentById(id);
+        long employeeCount =
+                employeeRepository.countByDepartmentDeptId(id);
+        if (employeeCount > 0) {
+            throw new BusinessException(
+                    "Department cannot be deleted because employees are assigned to it."
+            );
+        }
+
+
         departmentRepository.delete(dept);
     }
 
@@ -113,5 +118,18 @@ public class DepartmentService {
 
         Page<Department> departmentPage = departmentRepository.findAll(spec , pageable);
         return departmentPage.map(this::toDto);
+    }
+
+    private Employee validateManager (Long managerId){
+        if (managerId == null){
+            return null;
+        }
+        Employee manager = employeeRepository.findById(managerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Manager not found with id: " + managerId));
+        if (manager.getStatus() != StatusType.ACTIVE){
+            throw new BusinessException("Only active employees can be assigned as department managers."
+            );
+        }
+        return manager;
     }
 }

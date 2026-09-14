@@ -20,16 +20,13 @@ import java.util.List;
 
 public class Department {
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(length = 2)
     private Long deptId;
 
     @Column(nullable = false, unique = true)
     private String deptName;
-
-
-
-    //department cannot be deleted if employees exist
+    
     @OneToMany(mappedBy = "department" , cascade = {CascadeType.PERSIST,CascadeType.MERGE})
     private List<Employee> employees = new ArrayList<>();
 

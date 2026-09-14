@@ -1,7 +1,14 @@
 package org.example.hrmanagementsystem.task.service;
 
+import org.example.hrmanagementsystem.auth.entity.User;
+import org.example.hrmanagementsystem.auth.repository.UserRepository;
+import org.example.hrmanagementsystem.employees.model.Employee;
+import org.example.hrmanagementsystem.exception.BusinessException;
 import org.example.hrmanagementsystem.exception.ResourceNotFoundException;
 import org.example.hrmanagementsystem.project.model.Project;
+import org.example.hrmanagementsystem.security.model.MyUserDetails;
+import org.example.hrmanagementsystem.task.Repository.TaskAssignmentRepository;
+import org.example.hrmanagementsystem.task.entity.TaskAssignment;
 import org.example.hrmanagementsystem.task.specifiaction.TaskSpecification;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -15,6 +22,7 @@ import org.example.hrmanagementsystem.task.dto.*;
 import org.example.hrmanagementsystem.task.entity.Task;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -25,11 +33,13 @@ public class TaskService {
     private final TaskRepository taskRepository;
     private final ProjectRepository projectRepository;
     private final EmployeeRepository employeeRepository;
+    private final TaskAssignmentRepository taskAssignmentRepository;
+    private final UserRepository userRepository;
 
 
     private Task toEntity(TaskRequestDTO dto) {
         Task task = new Task();
-        task.setTaskTitle(dto.getTaskTitle());
+        task.setTaskTitle(dto.getTaskTitle().trim());
         if (dto.getProjectId() != null) {
             Project project = projectRepository.findById(dto.getProjectId())
                     .orElseThrow(() -> new ResourceNotFoundException("Project not found with id: " + dto.getProjectId()));
@@ -48,10 +58,29 @@ public class TaskService {
 
     }
 
-    public TaskResponseDTO save(TaskRequestDTO dto) {
+    public TaskResponseDTO save(TaskRequestDTO dto , MyUserDetails userDetails) {
         Task task = toEntity(dto);
-        Task saved = taskRepository.save(task);
-        return toDTO(saved);
+        Task savedTask = taskRepository.save(task);
+        if (dto.getEmployeeId() != null) {
+            Employee employee = employeeRepository.findById(dto.getEmployeeId())
+                    .orElseThrow(()-> new ResourceNotFoundException("Employee not found with id: " + dto.getEmployeeId()));
+            Project project = savedTask.getProject();
+            if(!project.getEmployees().contains(employee)) {
+                throw new BusinessException("Employee is not a member of the selected project");
+            }
+            User assignedBy = userRepository.findById(userDetails.getUserId())
+                    .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userDetails.getUserId()));
+
+            TaskAssignment assignment = new TaskAssignment();
+            assignment.setTask(savedTask);
+            assignment.setEmployee(employee);
+            assignment.setAssignedBy(assignedBy);
+            assignment.setAssignedDate(dto.getAssignedDate() != null ? dto.getAssignedDate() : LocalDate.now());
+            assignment.setDueDate(dto.getDueDate());
+            taskAssignmentRepository.save(assignment);
+        }
+
+        return toDTO(savedTask);
     }
 
     public TaskResponseDTO getById(Long id) {

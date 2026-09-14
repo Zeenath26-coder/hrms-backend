@@ -10,4 +10,5 @@ public class DepartmentResponseDTO {
     private Long deptId;
     private String deptName;
     private Long managerId;
+    private String managerName;
 }

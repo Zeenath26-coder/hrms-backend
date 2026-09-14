@@ -17,7 +17,7 @@ import java.util.List;
 @NoArgsConstructor
 public class Job {
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column
     private Long id;
 
