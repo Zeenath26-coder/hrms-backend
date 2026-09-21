@@ -38,7 +38,7 @@ public class AuthController {
                 .from("accessToken" , loginResponse.getToken())
                 .httpOnly(true)
                 .secure(false)
-                .sameSite("Lax")
+                .sameSite("None")
                 .path("/")
                 .maxAge(Duration.ofHours(24))
                 .build();
