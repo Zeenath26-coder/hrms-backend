@@ -3,9 +3,9 @@ spring:
     name: hrmanagementsystem
 
   datasource:
-    url: jdbc:mysql://localhost:3306/hrms
-    username: root
-    password: SEZee26
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
@@ -19,6 +19,7 @@ spring:
   mail:
     host: smtp.gmail.com
     port: 587
+    
     username: ${MAIL_USERNAME}
     password: ${MAIL_PASSWORD}
     properties:
@@ -30,10 +31,10 @@ spring:
 
 
 server:
-  port: 8085
+  port:  ${SERVER_PORT:8085}
 
 
 jwt:
-  secret:  mySuperSecretKeyThatIsAtLeastsooBitsLongForHS256Algorithm
-  expiration: 86400000 #24 hours
+  secret:  ${JWT_SECRET}
+  expiration: ${JWT_EXPIRATION:86400000} #24 hours
 
