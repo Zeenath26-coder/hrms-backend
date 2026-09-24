@@ -6,9 +6,11 @@ import org.example.hrmanagementsystem.auth.entity.User;
 import org.example.hrmanagementsystem.employees.model.Employee;
 import org.example.hrmanagementsystem.enums.ProjectStatus;
 import org.example.hrmanagementsystem.task.entity.Task;
+import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -31,12 +33,15 @@ public class Project {
     @Column(nullable = false)
     private boolean deleted = false;
 
-    @Column(nullable = false)
+    @CreationTimestamp
+    @Column(nullable = false, updatable = false)
     private LocalDate createdDate;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ProjectStatus status = ProjectStatus.ACTIVE;
+
+
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "managerId" , nullable = false)
@@ -46,8 +51,8 @@ public class Project {
     @ManyToMany
     @JoinTable(
             name ="project_employee",
-            joinColumns = @JoinColumn(name= "projectId" ),
-            inverseJoinColumns= @JoinColumn(name="employeeId")
+            joinColumns = @JoinColumn(name= "project_id" ),
+            inverseJoinColumns= @JoinColumn(name="employee_id")
     )
     private List<Employee> employees = new ArrayList<>();
 
